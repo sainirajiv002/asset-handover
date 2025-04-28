@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Asset Handover</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 20px;
+      background: #f9f9f9;
+    }
+    .container {
+      max-width: 400px;
+      margin: auto;
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+    input, select, button {
+      width: 100%;
+      margin-bottom: 15px;
+      padding: 12px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+    }
+    button {
+      background: #007bff;
+      color: white;
+      font-weight: bold;
+      border: none;
+    }
+    button:hover {
+      background: #0056b3;
+    }
+    #scanner-container {
+      display: none;
+      margin-bottom: 15px;
+    }
+  </style>
+
+  <!-- Include html5-qrcode library -->
+  <script src="https://unpkg.com/html5-qrcode/minified/html5-qrcode.min.js"></script>
+</head>
+<body>
+  <div class="container">
+    <h2>Asset Handover</h2>
+    <form id="handoverForm">
+      <label for="employeeId">Scan Employee ID</label>
+      <input type="text" id="employeeId" name="employeeId" placeholder="Scan or enter Employee ID" required>
+      <button type="button" id="scanEmployeeBtn">Scan Employee ID</button>
+
+      <label for="assetId">Scan Asset ID</label>
+      <input type="text" id="assetId" name="assetId" placeholder="Scan or enter Asset ID" required>
+      <button type="button" id="scanAssetBtn">Scan Asset ID</button>
+
+      <label for="actionType">Action</label>
+      <select id="actionType" name="actionType" required>
+        <option value="Issue">Issue</option>
+        <option value="Return">Return</option>
+      </select>
+
+      <label for="damage">Mark as Damaged (optional)</label>
+      <select id="damage" name="damage">
+        <option value="No">No</option>
+        <option value="Yes">Yes</option>
+      </select>
+
+      <button type="submit">Submit</button>
+    </form>
+
+    <div id="status"></div>
+
+    <!-- Container for QR scanner -->
+    <div id="scanner-container"></div>
+  </div>
+
+  <script>
+    // Initialize variables
+    let currentField = '';  // To track which field we are scanning
+
+    // Start QR scanning for Employee ID
+    document.getElementById('scanEmployeeBtn').addEventListener('click', function() {
+      currentField = 'employeeId';
+      startScanner();
+    });
+
+    // Start QR scanning for Asset ID
+    document.getElementById('scanAssetBtn').addEventListener('click', function() {
+      currentField = 'assetId';
+      startScanner();
+    });
+
+    // Function to start the QR scanner
+    function startScanner() {
+      document.getElementById('scanner-container').style.display = 'block';
+      const html5QrCode = new Html5Qrcode("scanner-container");
+
+      html5QrCode.start(
+        { facingMode: "environment" },  // Use back camera (environment)
+        { fps: 10, qrbox: 250 },        // 10 frames per second, 250px box for scanning
+        qrCodeMessage => {
+          // This gets triggered when a QR code is scanned
+          document.getElementById(currentField).value = qrCodeMessage;  // Fill the corresponding field
+          html5QrCode.stop(); // Stop the scanner once we have the scan
+          document.getElementById('scanner-container').style.display = 'none';  // Hide the scanner
+        },
+        errorMessage => { 
+          console.log(errorMessage);  // Optional: Handle errors (e.g., scan error)
+        }
+      ).catch(err => {
+        console.error("Error starting scanner: ", err);
+      });
+    }
+
+    // Handle form submission
+    document.getElementById("handoverForm").addEventListener("submit", function(e) {
+      e.preventDefault();
+
+      const employeeId = document.getElementById("employeeId").value;
+      const assetId = document.getElementById("assetId").value;
+      const actionType = document.getElementById("actionType").value;
+      const damage = document.getElementById("damage").value;
+
+      fetch("https://script.google.com/macros/s/AKfycbwSc6dkYyzHHONCYssuSuUpO-kyX2L--dsV4C6ovlzkZOy8fsDJlxy0wbBWDU9U3iM7/exec", {
+        method: "POST",
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ employeeId, assetId, actionType, damage }),
+        mode: 'no-cors'   // Important for Google Scripts to avoid CORS error
+      })
+      .then(response => {
+        console.log("Response received:", response);
+        document.getElementById("status").innerText = "Form submitted successfully!";
+        document.getElementById("handoverForm").reset();
+      })
+      .catch(error => {
+        console.error("Error:", error);
+        document.getElementById("status").innerText = "Error submitting data. Please try again.";
+      });
+    });
+  </script>
+</body>
+</html>
